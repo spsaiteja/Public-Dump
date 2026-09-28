@@ -1,140 +1,2500 @@
 openapi: 3.0.3
 info:
-  title: Customer API
-  version: v1
-  description: Customer management API for retail and enterprise accounts.
+  title: Transaction Notify DEH API
+  description: This  API is used to notify 3DS transactions for users in the banking system.
+  version: 1.0.0
   contact:
-    name: API Platform Team
-    email: api-platform@company.com
-
-servers:
-  - url: https://api-dev.company.com/customer
-    description: develop
-  - url: https://api-sit.company.com/customer
-    description: SIT
-  - url: https://api-uat.company.com/customer
-    description: UAT
-  - url: https://api-replica.company.com/customer
-    description: replica
-  - url: https://api.company.com/customer
-    description: production
-
+    name: API Support
+    email: support@bank.com
+  license:
+    name: Proprietary License
+    url: https://bank.com/license
+  x-kong-target: internal
+servers :
+  - url: https://customer-dev.rakbanktst.ae/retail-users/rest
+    description: Generated server url    
+    x-kong-env: develop
+  - url: https://customer-sit.rakbanktst.ae/retail-users/rest
+    description: Generated server url    
+    x-kong-env: sit
+tags:
+  - name: 3DS Transaction Notify
+    description: Operations for notifying 3DS transactions
+x-kong-plugin-openid-connect:
+  _config: sbo_digital_bank_virtual_user_openid_config
+  config:
+   scopes_required:
+   - retail:virtual-user
+x-kong-plugin-post-function:
+  _config: post_function_deh_token_config
+x-kong-plugin-route-by-header:
+  name: route-by-header
+  enabled: true
+  config:
+    rules:
+      - upstream_name: customer-sit2
+        condition:
+          x-env: sit2
 paths:
-  /customers:
-    get:
-      summary: List all customers
-      responses:
-        '200':
-          description: A list of customers
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Customer'
+  /v1/banks/{bankId}/users/3ds-transactions/notify:
     post:
-      summary: Create a new customer
+      tags:
+        - 3DS Transaction Notify
+      summary: Notify 3DS Transaction
+      description: Notifies a 3DS transaction.
+      operationId: notify3DSTransaction
+      parameters:
+        - name: bankId
+          in: path
+          description: Bank ID
+          required: true
+          explode: false
+          schema:
+            type: string
+          example: RAKBANK
+       
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CustomerInput'
-      responses:
-        '201':
-          description: Customer created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Customer'
-        '400':
-          description: Invalid request payload
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+              $ref: '#/components/schemas/Custom3DSTransactionNotifyRequest'
+            example:
+              tranRefNumber: "3453453"
+              cardNumber: "4567"
+              cardType: "VISA"
+              merchantName: "AMAZON"
+              amount: "500"
+              currency: "AED"
+              merchantAppUrl: "https://amazon.ae/app"
+              retailCIF: "1234567"
+              challengeType: "OOB"
+              userSegment: "PBG"
+              tranTime: "2026-02-02 14:30:00"
+              
+              
 
-  /customers/{id}:
-    get:
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The customer unique identifier
-          schema:
-            type: string
+            
+               
+                
       responses:
         '200':
-          description: Customer found
+          description: 3DS transaction notified successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
-        '404':
-          description: Customer not found
-          content:
-            application/json:
+                $ref: '#/components/schemas/Custom3DSTransactionNotifyResponse'
+              example:
+                successMessage: "transaction notified successfully"
+                
+               
+        "400":
+          description: Bad Request
+          headers:
+            channelcontext:
+              description: Provides the error information of the response
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The customer unique identifier
-          schema:
-            type: string
-      responses:
-        '204':
-          description: Customer deleted successfully
+                $ref: '#/components/schemas/Header'
+        "401":
+          description: User is Unauthorized
+          headers:
+            channelcontext:
+              description: Provides the error information of the response
+              schema:
+                $ref: '#/components/schemas/Header'
+        "404":
+          description: Resource or Data Not found
+          headers:
+            channelcontext:
+              description: Provides the error information of the response
+              schema:
+                $ref: '#/components/schemas/Header'
+        "405":
+          description: Invalid HTTP Method
+          headers:
+            channelcontext:
+              description: Provides the error information of the response
+              schema:
+                $ref: '#/components/schemas/Header'
+        "415":
+          description: Invalid Media Type
+          headers:
+            channelcontext:
+              description: Provides the error information of the response
+              schema:
+                $ref: '#/components/schemas/Header'
+        "500":
+          description: Fatal Exception or Server Errors
+          headers:
+            channelcontext:
+              description: Provides the error information of the response
+              schema:
+                $ref: '#/components/schemas/Header'
 
 components:
   schemas:
-    Customer:
+    Custom3DSTransactionNotifyRequest:
       type: object
       required:
-        - id
-        - name
-        - email
+        - tranRefNumber
+        - cardNumber
+        - cardType
+        - merchantName
+        - amount
+        - currency
+        - merchantAppUrl
+        - retailCIF
+        - challengeType
+        - userSegment
+        - tranTime  
       properties:
-        id:
+        tranRefNumber:
           type: string
-          example: "cust_12345"
-        name:
+          description: Transaction reference number
+          example: "323273"
+        cardNumber:
           type: string
-          example: "Acme Corp"
-        email:
+          description: Card number  
+          example: "4567"
+        cardType: 
           type: string
-          format: email
-          example: "support@acme.com"
-        tier:
+          description: Card type
+          example: "VISA"
+        merchantName:
           type: string
-          enum: [standard, premium, enterprise]
-          default: standard
+          description: Merchant name
+          example: "AMAZON  AE  "
+        amount:
+          type: string
+          description: Amount of the transaction
+          example: "500"
+        currency:
+          type: string
+          description: Currency of the transaction
+          example: "AED"
+        merchantAppUrl:
+          type: string
+          description: URL of the merchant's application
+          example: "https://amazon.ae/app"
+        retailCIF:
+          type: string
+          description: Retail CIF
+          example: "1234567"
+        challengeType:
+          type: string
+          description: Type of challenge
+          example: "OOB"
+        userSegment:
+          type: string
+          description: User segment
+          example: "PBG"
+        tranTime:
+          type: string
+          description: Transaction time
+          example: "2026-02-02 14:30:00"
+        
 
-    CustomerInput:
+    Custom3DSTransactionNotifyResponse:
       type: object
-      required:
-        - name
-        - email
       properties:
-        name:
+         
+        status:
           type: string
-          example: "Acme Corp"
-        email:
-          type: string
-          format: email
-          example: "support@acme.com"
+          description: status of the notify request
+          example: "SUCCESS"
+        
+    
 
-    ErrorResponse:
+    Header:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/Status"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+      description: The header information of the API. The header includes details such
+        as- status, authorization, pagination, message type, message code and
+        description.
+    Status:
+      type: object
+      properties:
+        message:
+          type: array
+          description: Provides the list of messages indicating the success or failure of
+            the API response
+          items:
+            $ref: "#/components/schemas/Message"
+      description: Provides the status information of response
+    Pagination:
+      type: object
+      properties:
+        totalRecordCount:
+          type: string
+          description: Total number of records available for the given criteria.
+          example: "1459"
+        totalPages:
+          type: string
+          description: total number of pages
+        pageNumber:
+          type: string
+          description: Page number of response
+        hasMoreRecords:
+          type: string
+          description: " whether more records are available or not"
+          example: Y
+        numRecReturned:
+          type: string
+          description: The number of records received for the given criteria.
+          example: "400"
+        nextStartIndex:
+          type: string
+          description: The start index of next record.
+          example: "401"
+        indexOfLastRecRecorded:
+          type: string
+          description: The index of the last record received in this response.
+      description: Pagination
+    Message:
+      type: object
+      properties:
+        recordReference:
+          type: string
+          description: The record number which has failed or passed in case of multi
+            record APIs
+          example: "1"
+        message_TYPE:
+          type: string
+          description: "Type of message that is returned in response. Allowed Values: SU -
+            Success, BE - Business Exception, CE - Critical Exception, BC -
+            Business Confirmation"
+          example: SU
+        messageAddlnInfo:
+          type: string
+          description: Provides the additional information on response.
+          example: REFERENCE_ID=3|Bill is already rejected
+        messageDesc:
+          type: string
+          description: Provides the description of the message.
+          example: SUCCESS
+        messageCode:
+          type: string
+          description: Provides the code of the message.
+          example: "0000"
+        nameSpaceInfo:
+          type: string
+          description: "Provides whether the error is from product or from customization.
+            Allowed Values: PROD, CUST"
+          example: PROD
+      description: Message
+
+
+
+
+    openapi: 3.0.1
+info:
+  title: NPSS Customer Service API
+  description: Customer service endpoints
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: api-support@rakbank.ae
+  x-kong-target: internal
+servers:
+  - url: https://proxy-ms.npssraktest.rakbanktst.ae
+    description: Development Server
+    x-kong-env: develop
+  - url: https://proxy-ms.npssraktest.rakbanktst.ae
+    description: SIT Server
+    x-kong-env: sit
+  - url: https://proxy-ms.npssraktest.rakbanktst.ae
+    description: UAT Server
+    x-kong-env: uat
+  - url: https://proxy-ms.npssraktest.rakbanktst.ae
+    description: Replica Server
+    x-kong-env: replica
+  - url: https://proxy-ms.npssraktest.rakbanktst.ae
+    description: Production Server
+    x-kong-env: production
+tags:
+  - name: CustomerAddAccount
+    description: Customer add account operations
+  - name: CustomerEnrolment
+    description: Customer enrolment operations
+  - name: CustomerFetchIban
+    description: Customer fetch IBAN operations
+  - name: CustomerFetchLimit
+    description: Customer fetch limit operations
+  - name: CustomerRemoveAccount
+    description: Customer remove account operations
+  - name: CustomerRetrieveContact
+    description: Customer retrieve contact operations
+  - name: CustomerUnenrolment
+    description: Customer unenrolment operations
+  - name: CustomerUpdateProxy
+    description: Customer update proxy operations
+x-kong-plugin-pre-function:
+  name: pre-function
+  config:
+    access:
+      - |
+          return function()
+              local request_body, err = kong.request.get_raw_body()
+
+              if request_body then
+                  kong.log.set_serialize_value("rb.body", request_body)
+              else
+                  kong.log.set_serialize_value("rb.body_error", err)
+              end
+
+              kong.service.request.enable_buffering()
+          end
+    log:
+      - |
+          return function()
+              local response_body = kong.service.response.get_raw_body()
+
+              if response_body then
+                  kong.log.set_serialize_value("rs.body", response_body)
+              end
+          end   
+paths:
+  /api/customer-service/v1/customer/add-account:
+    post:
+      tags:
+        - CustomerAddAccount
+      description: CustomerAddAccount Api
+      operationId: CustomerAddAccount
+      parameters:
+        - name: X-Request-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            example: 'XID{{$timestamp}}'
+      requestBody:
+        description: CustomerAddAccount Request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerAddAccountRequestObject'
+            examples:
+              CustomerAddAccountRequestObject:
+                description: CustomerAddAccount Request
+                value:
+                  header:
+                    channel: IB
+                    channelRef: "CRF{{$timestamp}}"
+                    timeStamp: "{{$isoTimestamp}}"
+                  customer:
+                    customerId: "0330190"
+                  accDetails:
+                    - currency: AED
+                      iban: AE430040000077665517113
+                      instantPmtEnabled: false
+                      updateDefaultAccount: true
+      responses:
+        '200':
+          description: CustomerAddAccount200 Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerAddAccountResponseObject200'
+      x-kong-plugin-rate-limiting-advanced:
+        name: rate-limiting-advanced
+        enabled: true
+        instance_name: rate-limit-post-api-add-account
+        _config: rate_limiting_default
+        config:
+          window_size:
+            - 10
+          limit:
+            - 1000
+          namespace: post-api-add-account
+      x-kong-plugin-openid-connect:
+        name: openid-connect
+        enabled: true
+        instance_name: openid-connect-post-customeraddaccount
+        _config: sbo_standard_token_openid_config_int
+        config:
+          scopes_required:
+            - write:customer-account
+          scopes:
+            - write:customer-account
+  /api/customer-service/v1/customer/customer-enrolment:
+    post:
+      tags:
+        - CustomerEnrolment
+      description: CustomerEnrolment Api
+      operationId: CustomerEnrolment
+      parameters:
+        - name: X-Request-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            example: 'CHR{{$timestamp}}'
+      requestBody:
+        description: CustomerEnrolment Request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerEnrolmentRequestObject'
+            examples:
+              CustomerEnrolmentRequestObject:
+                description: CustomerEnrolment Request
+                value:
+                  header:
+                    channel: IB
+                    channelRef: "CHPM{{$timestamp}}"
+                    timeStamp: "{{$isoTimestamp}}"
+                  customer:
+                    customerId: "0330190"
+                    name: "Firstname for 0330190 "
+                    surname: "lastname for 0330190"
+                    mobileNumber: "+971560330190"
+                    consent: Y
+                    accountDetails:
+                      - currency: AED
+                        accountNo: AE240400000033330100031
+                        accountIdentifier: "null"
+                        instantPayment: Y
+                        defaultAccount: Y
+                      - currency: AED
+                        accountNo: AE250400000330330100003
+                        accountIdentifier: "null"
+                        instantPayment: Y
+                        defaultAccount: N
+                      - currency: AED
+                        accountNo: AE740400000033330100101
+                        accountIdentifier: "null"
+                        instantPayment: Y
+                        defaultAccount: N
+                    proxyDetails:
+                      type: OT
+                      value: "784198921506887"
+      responses:
+        '200':
+          description: CustomerEnrolment200 Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerEnrolmentResponseObject200'
+      x-kong-plugin-rate-limiting-advanced:
+        name: rate-limiting-advanced
+        enabled: true
+        instance_name: rate-limit-post-api-customer-enrolment
+        _config: rate_limiting_default
+        config:
+          window_size:
+            - 10
+          limit:
+            - 1000
+          namespace: post-api-customer-enrolment
+      x-kong-plugin-openid-connect:
+        name: openid-connect
+        enabled: true
+        instance_name: openid-connect-post-customerenrolment
+        _config: sbo_standard_token_openid_config_int
+        config:
+          scopes_required:
+            - write:customer-enrolment
+          scopes:
+            - write:customer-enrolment
+  /api/customer-service/v1/customer/fetch-iban:
+    get:
+      tags:
+        - CustomerFetchIban
+      description: CustomerFetchIban Api
+      operationId: CustomerFetchIban
+      parameters:
+        - name: X-Request-ID
+          in: header
+          schema:
+            type: string
+            example: 'CHREF{{$timestamp}}'
+        - name: bankUserId
+          in: query
+          schema:
+            type: string
+            example: '0330190'
+        - name: mobile
+          in: query
+          schema:
+            type: string
+            example: '%2B971560330190'
+      responses:
+        '200':
+          description: CustomerFetchIban200 Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerFetchIbanResponseObject200'
+      x-kong-plugin-rate-limiting-advanced:
+        name: rate-limiting-advanced
+        enabled: true
+        instance_name: rate-limit-get-api-fetch-iban
+        _config: rate_limiting_default
+        config:
+          window_size:
+            - 10
+          limit:
+            - 1000
+          namespace: get-api-fetch-iban
+      x-kong-plugin-openid-connect:
+        name: openid-connect
+        enabled: true
+        instance_name: openid-connect-get-customerfetchiban
+        _config: sbo_standard_token_openid_config_int
+        config:
+          scopes_required:
+            - read:fetch-customer-iban
+          scopes:
+            - read:fetch-customer-iban
+  /api/customer-service/v1/customer/fetch-limit:
+    get:
+      tags:
+        - CustomerFetchLimit
+      description: CustomerFetchLimit Api
+      operationId: CustomerFetchLimit
+      parameters:
+        - name: X-Request-ID
+          in: header
+          schema:
+            type: string
+            example: 'XRID{{$timestamp}}'
+        - name: customerId
+          in: query
+          schema:
+            type: string
+            example: '0177659'
+        - name: amount
+          in: query
+          schema:
+            type: string
+            example: '100'
+      responses:
+        '200':
+          description: CustomerFetchLimit200 Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerFetchLimitResponseObject200'
+      x-kong-plugin-rate-limiting-advanced:
+        name: rate-limiting-advanced
+        enabled: true
+        instance_name: rate-limit-get-api-fetch-limit
+        _config: rate_limiting_default
+        config:
+          window_size:
+            - 10
+          limit:
+            - 1000
+          namespace: get-api-fetch-limit
+      x-kong-plugin-openid-connect:
+        name: openid-connect
+        enabled: true
+        instance_name: openid-connect-get-customerfetchlimit
+        _config: sbo_standard_token_openid_config_int
+        config:
+          scopes_required:
+            - read:fetch-customer-limit
+          scopes:
+            - read:fetch-customer-limit
+  /api/customer-service/v1/customer/{customerId}/remove-account:
+    delete:
+      tags:
+        - CustomerRemoveAccount
+      description: CustomerRemoveAccount Api
+      operationId: CustomerRemoveAccount
+      parameters:
+        - name: channel
+          in: header
+          required: true
+          schema:
+            type: string
+            example: IB
+        - name: channelRef
+          in: header
+          required: true
+          schema:
+            type: string
+            example: 'REF{{$timestamp}}'
+        - name: timestamp
+          in: header
+          schema:
+            type: string
+            example: '{{$isotimestamp}}'
+        - name: X-Request-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            example: 'CHREF{{$timestamp}}'
+        - name: language
+          in: header
+          schema:
+            type: string
+            example: EN
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: IBAN
+          in: query
+          schema:
+            type: string
+            example: AE250400000330330100003
+      responses:
+        '200':
+          description: CustomerRemoveAccount200 Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerRemoveAccountResponseObject200'
+      x-kong-plugin-rate-limiting-advanced:
+        name: rate-limiting-advanced
+        enabled: true
+        instance_name: rate-limit-delete-api-remove-account
+        _config: rate_limiting_default
+        config:
+          window_size:
+            - 10
+          limit:
+            - 1000
+          namespace: delete-api-remove-account
+      x-kong-plugin-openid-connect:
+        name: openid-connect
+        enabled: true
+        instance_name: openid-connect-delete-customerremoveaccount
+        _config: sbo_standard_token_openid_config_int
+        config:
+          scopes_required:
+            - delete:customer-account
+          scopes:
+            - delete:customer-account
+  /api/customer-service/v1/customer/groups/{groupCode}/banks/{bankCode}/bank-user/{bankUserId}/contact:
+    get:
+      tags:
+        - CustomerRetrieveContact
+      description: CustomerRetrieveContact Api
+      operationId: CustomerRetrieveContact
+      parameters:
+        - name: x-Request-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            example: 'XRID{{$timestamp}}'
+        - name: groupCode
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: bankCode
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: bankUserId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: mobile
+          in: query
+          schema:
+            type: string
+            example: '%2B971500222125'
+        - name: type
+          in: query
+          schema:
+            type: string
+            example: email
+        - name: value
+          in: query
+          schema:
+            type: string
+            example: testt546@gmail.com
+      responses:
+        '200':
+          description: CustomerRetrieveContact200 Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerRetrieveContactResponseObject200'
+      x-kong-plugin-rate-limiting-advanced:
+        name: rate-limiting-advanced
+        enabled: true
+        instance_name: rate-limit-get-api-contact
+        _config: rate_limiting_default
+        config:
+          window_size:
+            - 10
+          limit:
+            - 1000
+          namespace: get-api-contact
+      x-kong-plugin-openid-connect:
+        name: openid-connect
+        enabled: true
+        instance_name: openid-connect-get-customerretrievecontact
+        _config: sbo_standard_token_openid_config_int
+        config:
+          scopes_required:
+            - read:customer-contact
+          scopes:
+            - read:customer-contact
+  /api/customer-service/v1/customer/customer-unenrolment:
+    post:
+      tags:
+        - CustomerUnenrolment
+      description: CustomerUnenrolment Api
+      operationId: CustomerUnenrolment
+      requestBody:
+        description: CustomerUnenrolment Request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerUnenrolmentRequestObject'
+            examples:
+              CustomerUnenrolmentRequestObject:
+                description: CustomerUnenrolment Request
+                value:
+                  header:
+                    channel: MB
+                    channelRef: "CHPM{{$timestamp}}"
+                    timeStamp: "{{$isoTimestamp}}"
+                  customer:
+                    customerId: "0100678"
+                    isOptOut: true
+      responses:
+        '200':
+          description: CustomerUnenrolment200 Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerUnenrolmentResponseObject200'
+      x-kong-plugin-rate-limiting-advanced:
+        name: rate-limiting-advanced
+        enabled: true
+        instance_name: rate-limit-post-api-customer-unenrolment
+        _config: rate_limiting_default
+        config:
+          window_size:
+            - 10
+          limit:
+            - 1000
+          namespace: post-api-customer-unenrolment
+      x-kong-plugin-openid-connect:
+        name: openid-connect
+        enabled: true
+        instance_name: openid-connect-post-customerunenrolment
+        _config: sbo_standard_token_openid_config_int
+        config:
+          scopes_required:
+            - update:customer-enrolment
+          scopes:
+            - update:customer-enrolment
+  /api/customer-service/v1/customer/update-proxy:
+    post:
+      tags:
+        - CustomerUpdateProxy
+      description: CustomerUpdateProxy Api
+      operationId: CustomerUpdateProxy
+      parameters:
+        - name: X-Request-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            example: 'CHMREF{{$timestamp}}'
+      requestBody:
+        description: CustomerUpdateProxy Request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerUpdateProxyRequestObject'
+            examples:
+              CustomerUpdateProxyRequestObject:
+                description: CustomerUpdateProxy Request
+                value:
+                  header:
+                    channel: MB
+                    channelRef: "CHREF{{$timestamp}}"
+                    timeStamp: "{{$isoTimestamp}}"
+                  customer:
+                    serviceType: update
+                    customerId: "0330190"
+                    mobile: "+971560330190"
+                    proxy:
+                      type: email
+                      value: zara1@hotmail.com
+      responses:
+        '200':
+          description: CustomerUpdateProxy200 Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerUpdateProxyResponseObject200'
+      x-kong-plugin-rate-limiting-advanced:
+        name: rate-limiting-advanced
+        enabled: true
+        instance_name: rate-limit-post-api-update-proxy
+        _config: rate_limiting_default
+        config:
+          window_size:
+            - 10
+          limit:
+            - 1000
+          namespace: post-api-update-proxy
+      x-kong-plugin-openid-connect:
+        name: openid-connect
+        enabled: true
+        instance_name: openid-connect-post-customerupdateproxy
+        _config: sbo_standard_token_openid_config_int
+        config:
+          scopes_required:
+            - update:customer-proxy
+          scopes:
+            - update:customer-proxy
+components:
+  schemas:
+    CustomerAddAccountRequestObject:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            channel:
+              type: string
+              example: IB
+            channelRef:
+              type: string
+              example: 'CRF{{$timestamp}}'
+            timeStamp:
+              type: string
+              example: '{{$isoTimestamp}}'
+        customer:
+          type: object
+          properties:
+            customerId:
+              type: string
+              example: '0330190'
+        accDetails:
+          type: array
+          items:
+            type: object
+            properties:
+              currency:
+                type: string
+                example: AED
+              iban:
+                type: string
+                example: AE430040000077665517113
+              instantPmtEnabled:
+                type: boolean
+                example: false
+              updateDefaultAccount:
+                type: boolean
+                example: true
+    CustomerAddAccountResponseObject200:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            channel:
+              type: string
+              example: IB
+            channelRef:
+              type: string
+              example: CRF1751608750
+            timeStamp:
+              type: string
+              format: date-time
+              example: '2025-07-04T08:00:49.972Z'
+            statusCode:
+              type: string
+              example: '000'
+            statusDesc:
+              type: string
+              example: Success
+        respDtl:
+          type: object
+          properties:
+            addAccount:
+              type: object
+              properties:
+                code:
+                  type: string
+                  example: C00000
+                desc:
+                  type: string
+                  example: Positive result
+                addAccountDtl:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      iban:
+                        type: string
+                        example: AE430040000077665517113
+                      currency:
+                        type: string
+                        example: AED
+                      bankAccountId:
+                        type: string
+                        example: '562199'
+                      appId:
+                        type: string
+                        example: '118123'
+                      defaultAccount:
+                        type: boolean
+                        example: true
+            updateDefaultAccount:
+              type: object
+              properties:
+                code:
+                  type: string
+                  example: C00000
+                desc:
+                  type: string
+                  example: Positive Result
+                defaultAccDtl:
+                  type: object
+                  properties:
+                    oldDefaultBankAccount:
+                      type: object
+                      properties:
+                        oldBankAccountId:
+                          type: string
+                          example: '562009'
+                        newBankAccountId:
+                          type: string
+                          example: '562201'
+                    newDefaultBankAccount:
+                      type: object
+                      properties:
+                        oldBankAccountId:
+                          type: string
+                          example: '562199'
+                        newBankAccountId:
+                          type: string
+                          example: '562203'
+    CustomerEnrolmentRequestObject:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            channel:
+              type: string
+              example: IB
+            channelRef:
+              type: string
+              example: 'CHPM{{$timestamp}}'
+            timeStamp:
+              type: string
+              example: '{{$isoTimestamp}}'
+        customer:
+          type: object
+          properties:
+            customerId:
+              type: string
+              example: '0330190'
+            name:
+              type: string
+              example: 'Firstname for 0330190 '
+            surname:
+              type: string
+              example: lastname for 0330190
+            mobileNumber:
+              type: string
+              example: '+971560330190'
+            consent:
+              type: string
+              example: Y
+            accountDetails:
+              type: array
+              items:
+                type: object
+                properties:
+                  currency:
+                    type: string
+                    example: AED
+                  accountNo:
+                    type: string
+                    example: AE240400000033330100031
+                  accountIdentifier:
+                    type: string
+                    example: ''
+                  instantPayment:
+                    type: string
+                    example: Y
+                  defaultAccount:
+                    type: string
+                    example: Y
+            proxyDetails:
+              type: object
+              properties:
+                type:
+                  type: string
+                  example: OT
+                value:
+                  type: string
+                  example: '784198921506887'
+    CustomerEnrolmentResponseObject200:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            channel:
+              type: string
+              example: IB
+            channelRef:
+              type: string
+              example: CHPM1751542861
+            timeStamp:
+              type: string
+              format: date-time
+              example: '2025-07-03T08:00:49.972Z'
+            statusCode:
+              type: string
+              example: '000'
+            statusDesc:
+              type: string
+              example: Success
+        respDtl:
+          type: object
+          properties:
+            enrolment:
+              type: object
+              properties:
+                code:
+                  type: string
+                  example: C00000
+                desc:
+                  type: string
+                  example: Positive Result
+            activation:
+              type: object
+              properties:
+                code:
+                  type: string
+                  example: C00000
+                desc:
+                  type: string
+                  example: Positive Result
+                actvDtl:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      iban:
+                        type: string
+                        example: AE240400000033330100031
+                      currency:
+                        type: string
+                        example: AED
+                      bankAccountId:
+                        type: string
+                        example: '562009'
+                      appId:
+                        type: string
+                        example: 20250703-113610-nrakaea0xxx-b52dd103-141f-493e-ab95-b61926253a0f
+                      defaultAccount:
+                        type: boolean
+                        example: true
+    CustomerFetchIbanResponseObject200:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            x-Request-ID:
+              type: string
+              example: RID1751543241
+            timeStamp:
+              type: string
+              format: date-time
+              example: '2025-07-03T08:00:49.972Z'
+            statusCode:
+              type: string
+              example: '000'
+            statusDesc:
+              type: string
+              example: Success
+        respDtl:
+          type: object
+          properties:
+            customers:
+              type: object
+              properties:
+                code:
+                  type: string
+                  example: C00000
+                desc:
+                  type: string
+                  example: Positive result
+                customersDtl:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      groupCode:
+                        type: string
+                        example: '00040'
+                      bankCode:
+                        type: string
+                        example: '00040'
+                      bankUserId:
+                        type: string
+                        example: '0330190'
+                      consent:
+                        type: boolean
+                        example: true
+                      name:
+                        type: string
+                        example: Firstname for 0330190
+                      surname:
+                        type: string
+                        example: lastname for 0330190
+                      staticQrCode:
+                        type: string
+                        example: 00020101021162170213+97156033019063044EB9
+                      bankAccounts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            defaultAccount:
+                              type: boolean
+                              example: false
+                            status:
+                              type: string
+                              example: ACT
+                            appId:
+                              type: string
+                              example: 20250703-113610-nrakaea0xxx-b52dd103-141f-493e-ab95-b61926253a0f
+                            appIdStatus:
+                              type: string
+                              example: ACT
+                            defaultProxyBankAccount:
+                              type: array
+                              items:
+                                type: object
+                            currency:
+                              type: string
+                              example: AED
+                            bankAccountId:
+                              type: integer
+                              format: int32
+                              example: 562013
+                            IBAN:
+                              type: string
+                              example: AE250400000330330100003
+                      proxies:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                              example: document-id
+                            value:
+                              type: string
+                              example: '784198921506887'
+    CustomerFetchLimitResponseObject200:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            channel:
+              type: string
+              example: IB
+            channelRef:
+              type: string
+              example: CH123345787654
+            timeStamp:
+              type: string
+              format: date-time
+              example: '2025-07-03T08:00:49.972Z'
+            statusCode:
+              type: string
+              example: '0'
+            statusDesc:
+              type: string
+              example: Success
+        respDtl:
+          type: object
+          properties:
+            limit:
+              type: object
+              properties:
+                code:
+                  type: string
+                  example: S00000
+                desc:
+                  type: string
+                  example: Success
+                limitDtl:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      transferType:
+                        type: string
+                        example: request-to-pay
+                      globalLimit:
+                        type: number
+                        format: float
+                        example: 50000
+                      allowedLimit:
+                        type: object
+                        properties:
+                          min:
+                            type: number
+                            format: float
+                            example: 100
+                          max:
+                            type: number
+                            format: float
+                            example: 300
+                          daily:
+                            type: number
+                            format: float
+                            example: 1000
+                          monthly:
+                            type: number
+                            format: float
+                            example: 1500000
+                          nbTxn:
+                            type: integer
+                            format: int32
+                            example: 99999
+                      availableLimit:
+                        type: object
+                        properties:
+                          daily:
+                            type: number
+                            format: float
+                            example: 1000
+                          monthly:
+                            type: number
+                            format: float
+                            example: 1500000
+                          nbTxn:
+                            type: integer
+                            format: int32
+                            example: 99999
+    CustomerRemoveAccountResponseObject200:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            channel:
+              type: string
+              example: IB
+            channelRef:
+              type: string
+              example: REF_AOJVI1701845317822
+            timeStamp:
+              type: string
+              example: ''
+            statusCode:
+              type: string
+              example: '000'
+            statusDesc:
+              type: string
+              example: Success
+        respDtl:
+          type: object
+          properties:
+            removeAccount:
+              type: object
+              properties:
+                code:
+                  type: string
+                  example: C00000
+                desc:
+                  type: string
+                  example: Positive Result
+    CustomerRetrieveContactResponseObject200:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            x-Request-ID:
+              type: string
+              example: XRID1751608155
+            timeStamp:
+              type: string
+              format: date-time
+              example: '2025-07-04T08:00:49.972Z'
+            statusCode:
+              type: string
+              example: '000'
+            statusDesc:
+              type: string
+              example: Success
+        respDtl:
+          type: object
+          properties:
+            contact:
+              type: object
+              properties:
+                code:
+                  type: string
+                  example: C00000
+                desc:
+                  type: string
+                  example: Positive result
+                contactDtl:
+                  type: object
+                  properties:
+                    mobile:
+                      type: string
+                      example: '+971500222125'
+                    status:
+                      type: string
+                      example: ACT
+                    nominative:
+                      type: string
+                      example: Fir** Na** Fo* 022**** La** Na** Fo* 022****
+    CustomerUnenrolmentRequestObject:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            channel:
+              type: string
+              example: MB
+            channelRef:
+              type: string
+              example: 'CHPM{{$timestamp}}'
+            timeStamp:
+              type: string
+              example: '{{$isoTimestamp}}'
+        customer:
+          type: object
+          properties:
+            customerId:
+              type: string
+              example: '0100678'
+            isOptOut:
+              type: boolean
+              example: true
+    CustomerUnenrolmentResponseObject200:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            channel:
+              type: string
+              example: MB
+            channelRef:
+              type: string
+              example: CHPM1751542370
+            timeStamp:
+              type: string
+              format: date-time
+              example: '2025-07-03T08:00:49.972Z'
+            statusCode:
+              type: string
+              example: '000'
+            statusDesc:
+              type: string
+              example: Success
+        respDtl:
+          type: object
+          properties:
+            unenroll:
+              type: object
+              properties:
+                code:
+                  type: string
+                  example: C00000
+                desc:
+                  type: string
+                  example: Positive result
+    CustomerUpdateProxyRequestObject:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            channel:
+              type: string
+              example: MB
+            channelRef:
+              type: string
+              example: 'CHREF{{$timestamp}}'
+            timeStamp:
+              type: string
+              example: '{{$isoTimestamp}}'
+        customer:
+          type: object
+          properties:
+            serviceType:
+              type: string
+              example: update
+            customerId:
+              type: string
+              example: '0330190'
+            mobile:
+              type: string
+              example: '+971560330190'
+            proxy:
+              type: object
+              properties:
+                type:
+                  type: string
+                  example: email
+                value:
+                  type: string
+                  example: zara1@hotmail.com
+    CustomerUpdateProxyResponseObject200:
+      type: object
+      properties:
+        header:
+          type: object
+          properties:
+            channel:
+              type: string
+              example: MB
+            channelRef:
+              type: string
+              example: CHREF1751548005
+            timeStamp:
+              type: string
+              format: date-time
+              example: '2025-07-03T08:00:49.972Z'
+            statusCode:
+              type: string
+              example: '000'
+            statusDesc:
+              type: string
+              example: Success
+        respDtl:
+          type: object
+          properties:
+            serviceType:
+              type: string
+              example: update
+            proxy:
+              type: object
+              properties:
+                code:
+                  type: string
+                  example: C00000
+                desc:
+                  type: string
+                  example: Positive result
+
+
+
+        openapi: 3.1.0
+
+info:
+  version: "1.0.0"
+  title: IBPS APIs
+  description: Combined IBPS APIs — Create SR, Update Work Item, and WI Status
+  contact:
+    name: API Support
+    email: support@rakbank.ae
+  x-kong-target: internal
+
+servers:
+  - url: https://ANT2CASSVCS03.rakbanktst.ae:9443/IbpsCustomRestAPI/api/v1
+    description: IBPS Create SR Server
+    x-kong-env: develop
+  - url: https://ANT2CASSVCS03.rakbanktst.ae:9443/IbpsCustomRestAPI/api/v1
+    description: IBPS UAT Server 4
+    x-kong-env: sit
+  - url: https://ANT2CASSVCS03.rakbanktst.ae:9443/IbpsCustomRestAPI/api/v1
+    description: IBPS UAT Server 2
+    x-kong-env: uat
+
+
+
+tags:
+  - name: CREATE_SR
+    description: Card Dispute Service Request Creation APIs
+  - name: UPDATE_WI
+    description: Work Item Update APIs
+  - name: WI_STATUS
+    description: Work Item Status Retrieval APIs
+
+x-kong-plugin-acl:
+  config:
+    allow:
+      - ibps-apis-acl-grp
+
+x-kong-plugin-pre-function:
+  name: pre-function
+  config:
+    access:
+      - |
+          return function()
+              local request_body, err = kong.request.get_raw_body()
+
+              if request_body then
+                  kong.log.set_serialize_value("rb.body", request_body)
+              else
+                  kong.log.set_serialize_value("rb.body_error", err)
+              end
+
+              kong.service.request.enable_buffering()
+          end
+    log:
+      - |
+          return function()
+              local response_body = kong.service.response.get_raw_body()
+
+              if response_body then
+                  kong.log.set_serialize_value("rs.body", response_body)
+              end
+          end
+
+paths:
+
+  # ─── Create Service Request ──────────────────────────────────────────────
+  /IBPS/create:
+    post:
+      tags:
+        - CREATE_SR
+      summary: Create Service Request for Card Dispute
+      operationId: createSR
+      parameters:
+        - name: X-Request-UUID
+          in: header
+          required: true
+          description: Unique identifier for tracking the request.
+          schema:
+            type: string
+            format: uuid
+            examples:
+              - "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSRRequest"
+      responses:
+        "200":
+          description: Service Request Created Successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSRSuccessResponse"
+        "400":
+          description: Business Errors (2000–2999)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSRErrorResponse"
+        "500":
+          description: Technical Errors (1000–1999)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSRErrorResponse"
+      x-kong-plugin-openid-connect:
+        name: openid-connect
+        enabled: true
+        _config: sbo_standard_token_openid_config_int
+        config:
+          consumer_claim:
+            - client_id
+          consumer_by:
+            - username
+          anonymous: anonymous-deny
+          scopes:
+            - write:create-service-request
+          scopes_required:
+            - write:create-service-request
+      x-kong-plugin-key-auth:
+        config:
+          key_names:
+            - apikey
+            - x-api-key
+          anonymous: anonymous-deny
+
+  # ─── Update Work Item ────────────────────────────────────────────────────
+  /IBPS/update:
+    post:
+      tags:
+        - UPDATE_WI
+      summary: Update Work Item
+      description: Initiates or updates a process based on the work item provided.
+      operationId: updateProcess
+      parameters:
+        - name: X-Request-UUID
+          in: header
+          required: true
+          description: Unique identifier for tracking the request.
+          schema:
+            type: string
+            format: uuid
+            examples: ["123e4567-e89b-12d3-a456-426614174000"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProcessRequest"
+            examples:
+              sample_request:
+                summary: Sample Workitem Update Request
+                value:
+                  ProcessName: "TS"
+                  SubProcessName: "Card Dispute"
+                  WINumber: "TS-0000000001-process"
+                  Channel: "DEH"
+                  DBReferenceID: "12345678"
+                  WIUpdateAction: "Cancel"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateWISuccessResponse"
+              examples:
+                success:
+                  summary: Successful Response
+                  value:
+                    ReturnCode: "0"
+                    ReturnDesc: "Success"
+                    WorkitemNumber: "TS-0000000001-process"
+                    RequestID: "123e4567-e89b-12d3-a456-426614174000"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateWIErrorResponse"
+              examples:
+                bad_request:
+                  summary: Bad Request
+                  value:
+                    ReturnCode: "1001"
+                    ReturnDesc: "Invalid Operation type in request URL."
+                    WorkitemNumber: "TS-0000000001-process"
+                    RequestId: "123e4567-e89b-12d3-a456-426614174000"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateWIErrorResponse"
+              examples:
+                internal_error:
+                  summary: Internal Server Error
+                  value:
+                    ReturnCode: "5000"
+                    ReturnDesc: "Internal server error occurred while processing the request"
+                    WorkitemNumber: "TS-0000000001-process"
+                    RequestId: "123e4567-e89b-12d3-a456-426614174000"
+      x-kong-plugin-openid-connect:
+        name: openid-connect
+        enabled: true
+        _config: sbo_standard_token_openid_config_int
+        config:
+          consumer_claim:
+            - client_id
+          consumer_by:
+            - username
+          anonymous: anonymous-deny
+          scopes:
+            - write:update-work-item
+          scopes_required:
+            - write:update-work-item
+      x-kong-plugin-key-auth:
+        config:
+          key_names:
+            - apikey
+            - x-api-key
+          anonymous: anonymous-deny
+
+  # ─── WI Status ───────────────────────────────────────────────────────────
+  /IBPS/WIStatus:
+    post:
+      tags:
+        - WI_STATUS
+      summary: Retrieve Work Item Status
+      description: |
+        This API retrieves Work Item status based on one of the following request parameters:
+
+        Scenario 1:
+        - CIF ID only → Returns multiple Work Items
+
+        Scenario 2:
+        - DBReferenceID only → Returns a single Work Item
+
+        Scenario 3:
+        - WI Number only → Returns a single Work Item
+      operationId: getWIStatus
+      parameters:
+        - in: header
+          name: X-Correlation-ID
+          required: false
+          schema:
+            type: string
+          description: Unique request tracking identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WIStatusRequest"
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WIStatusResponse"
+        "400":
+          description: Business Validation Errors (2000–2999)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WIStatusErrorResponse"
+        "500":
+          description: Technical Errors (1000–1999)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WIStatusErrorResponse"
+      x-kong-plugin-openid-connect:
+        name: openid-connect
+        enabled: true
+        _config: sbo_standard_token_openid_config_int
+        config:
+          consumer_claim:
+            - client_id
+          consumer_by:
+            - username
+          anonymous: anonymous-deny
+          scopes:
+            - write:get-work-item-status
+          scopes_required:
+            - write:get-work-item-status
+      x-kong-plugin-key-auth:
+        config:
+          key_names:
+            - apikey
+            - x-api-key
+          anonymous: anonymous-deny
+
+components:
+  schemas:
+
+    # ─── Create SR Schemas ───────────────────────────────────────────────────
+
+    CreateSRRequest:
       type: object
       required:
-        - code
-        - message
+        - ProcessName
+        - SubProcessName
+        - InitiateAlso
+        - Channel
+        - DBReferenceID
+        - CardDisputeProcess
       properties:
-        code:
+        ProcessName:
           type: string
-          example: "INVALID_REQUEST"
+        SubProcessName:
+          type: string
+        InitiateAlso:
+          type: string
+        Channel:
+          type: string
+          description: Channel identifier.
+          examples: ["DEH / MCF"]
+        DBReferenceID:
+          type: string
+          description: Unique Reference ID from DEH or MCF.
+          examples: ["12345678"]
+        CardDisputeProcess:
+          $ref: "#/components/schemas/CardDisputeProcess"
+      additionalProperties: false
+
+    CreateSRSuccessResponse:
+      type: object
+      required: [status, message, referenceNumber]
+      properties:
+        status:
+          type: string
+          examples: ["SUCCESS"]
         message:
           type: string
-          example: "The request body was malformed"
+          examples: ["Service Request Created Successfully"]
+        referenceNumber:
+          type: string
+          examples: ["SR123456789"]
+
+    CreateSRErrorResponse:
+      type: object
+      required:
+        - errorCode
+        - errorMessage
+      properties:
+        errorCode:
+          type: string
+          description: |
+            1000–1999 → Technical Errors
+            2000–2999 → Business Errors
+          examples: ["2001"]
+        errorMessage:
+          type: string
+          examples: ["Invalid Card Number"]
+
+    CardDisputeProcess:
+      type: object
+      required:
+        - CustomerName
+        - CIFID
+        - MobileNo
+        - EmailID
+        - CustomerType
+        - CardNo
+        - CardCRN
+        - CardExpiryDate
+        - CardStatus
+        - IsPremiumCustomer
+        - RequestType
+        - ReasonOfIssue
+        - ActionToBeTaken
+        - TransactionDetails
+      properties:
+        CustomerName:
+          type: string
+          maxLength: 50
+          examples: ["ABC"]
+        CIFID:
+          type: string
+          maxLength: 10
+          examples: ["1234567"]
+        MobileNo:
+          type: string
+          maxLength: 15
+          examples: ["971501234567"]
+        EmailID:
+          type: string
+          format: email
+          maxLength: 50
+          examples: ["abc@domain.com"]
+        CustomerType:
+          type: string
+          maxLength: 1
+          description: I = Islamic, C = Conventional
+          enum: ["I", "C"]
+          examples: ["I"]
+        CardNo:
+          type: string
+          maxLength: 16
+          examples: ["1234567812345678"]
+        CardCRN:
+          type: string
+          maxLength: 15
+        CardExpiryDate:
+          type: string
+          format: date
+          examples: ["2026-12-31"]
+        CardStatus:
+          type: string
+          maxLength: 20
+          examples: ["CLSC"]
+        IsPremiumCustomer:
+          type: string
+          maxLength: 1
+          enum: ["Y", "N"]
+          examples: ["Y"]
+        RequestType:
+          type: string
+          maxLength: 50
+          examples: ["Unrecognized Transaction"]
+        ReasonOfIssue:
+          type: string
+          maxLength: 100
+        PointOfContact:
+          type: string
+          maxLength: 50
+          description: Mandatory only if RequestType is Unrecognized Transaction
+        ActionToBeTaken:
+          type: string
+          maxLength: 50
+        CustomerRemarks:
+          type: string
+        Channel:
+          type: string
+          description: Channel identifier.
+          examples: ["DEH / MCF"]
+        DBReferenceID:
+          type: string
+          description: Unique Reference ID from DEH or MCF.
+          examples: ["12345678"]
+        CustomerAction:
+          type: string
+        IsCardReplacementReq:
+          type: string
+          examples: ["N"]
+        TransactionDetails:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/TransactionDetails"
+      additionalProperties: false
+
+    TransactionDetails:
+      type: object
+      required:
+        - TransactionRefNo
+        - Date
+        - AmountInFC
+        - AmountInAED
+        - MerchantName
+        - AuthorizationID
+        - DisputeReason
+        - Location
+      properties:
+        TransactionRefNo:
+          type: string
+          examples: ["TXN10001"]
+        Date:
+          type: string
+          format: date
+          examples: ["2026-01-15"]
+        AmountInFC:
+          type: string
+          maxLength: 15
+          examples: ["100.00"]
+        AmountInAED:
+          type: string
+          maxLength: 15
+          examples: ["367.25"]
+        MerchantName:
+          type: string
+          maxLength: 100
+          examples: ["ABC Store"]
+        AuthorizationID:
+          type: string
+          maxLength: 15
+          examples: ["AUTH123456"]
+        DisputeReason:
+          type: string
+          maxLength: 15
+          default: Fraud
+          examples: ["Fraud"]
+        Category:
+          type: string
+          maxLength: 15
+          examples: ["Secured"]
+        SecuredTransactionType:
+          type: string
+          maxLength: 10
+          examples: ["OTP"]
+        Location:
+          type: string
+          maxLength: 100
+          examples: ["Dubai"]
+        SERNo:
+          type: string
+          maxLength: 15
+        ARN:
+          type: string
+          maxLength: 15
+      additionalProperties: false
+
+    # ─── Update WI Schemas ───────────────────────────────────────────────────
+
+    ProcessRequest:
+      type: object
+      required:
+        - ProcessName
+        - SubProcessName
+        - WINumber
+        - WIUpdateAction
+        - Channel
+        - DBReferenceID
+      properties:
+        ProcessName:
+          type: string
+          description: Name of the process to be updated.
+          examples: ["TS"]
+        SubProcessName:
+          type: string
+          description: Sub Process Name.
+          examples: ["Card Dispute / Account Transaction Dispute"]
+        WINumber:
+          type: string
+          description: iBPS WI Number which was created during WI Create Call.
+          examples: ["TS-0012342343-process"]
+        Channel:
+          type: string
+          description: Channel identifier.
+          examples: ["DEH / MCF"]
+        DBReferenceID:
+          type: string
+          description: Unique Reference ID from DEH or MCF.
+          examples: ["12345678"]
+        WIUpdateAction:
+          type: string
+          description: Action to be taken on the WI.
+          examples: ["Cancel"]
+      additionalProperties: false
+
+    UpdateWISuccessResponse:
+      type: object
+      required:
+        - ReturnCode
+        - ReturnDesc
+        - WorkitemNumber
+        - RequestID
+      properties:
+        ReturnCode:
+          type: string
+          description: Success return code.
+        ReturnDesc:
+          type: string
+          description: Success message describing the result.
+          examples: ["Success"]
+        WorkitemNumber:
+          type: string
+          description: Unique identifier for the initiated process.
+          examples: ["TS-12345-process"]
+        RequestID:
+          type: string
+          description: UUID for request traceability.
+          examples: ["123e4567-e89b-12d3-a456-426614174000"]
+
+    UpdateWIErrorResponse:
+      type: object
+      required:
+        - ReturnCode
+        - ReturnDesc
+        - WorkitemNumber
+        - RequestId
+      properties:
+        ReturnCode:
+          type: string
+          description: |
+            Error code indicating the type of error:
+            - 1001–1019: Validation errors
+            - 1020–1029: Missing mandatory field
+            - 5000–5999: Server errors
+          examples: ["1020"]
+        ReturnDesc:
+          type: string
+          description: Detailed description of the error.
+          examples: ["Mandatory field missing: ProcessName"]
+        WorkitemNumber:
+          type: string
+          description: Application Number.
+          examples: ["TS-00012345-process"]
+        RequestId:
+          type: string
+          description: UUID for request traceability.
+          examples: ["123e4567-e89b-12d3-a456-426614174000"]
+
+    # ─── WI Status Schemas ───────────────────────────────────────────────────
+
+    WIStatusRequest:
+      type: object
+      description: Only one field should be provided per request.
+      properties:
+        cifId:
+          type: string
+          examples: ["12345678"]
+          description: Customer CIF ID (Scenario 1)
+        dbReferenceId:
+          type: string
+          examples: ["DBREF12345"]
+          description: Database Reference ID (Scenario 2)
+        wiNumber:
+          type: string
+          examples: ["TS-0000010234-Process"]
+          description: Work Item Number (Scenario 3)
+      additionalProperties: false
+      oneOf:
+        - required: ["cifId"]
+        - required: ["dbReferenceId"]
+        - required: ["wiNumber"]
+
+    WIStatusResponse:
+      type: object
+      properties:
+        wiDetails:
+          type: array
+          items:
+            $ref: "#/components/schemas/WIDetails"
+
+    WIDetails:
+      type: object
+      properties:
+        wiNumber:
+          type: string
+          examples: ["TS-0000010234-Process"]
+        wiStatus:
+          type: string
+          examples: ["Open"]
+          enum:
+            - Open
+            - Closed
+            - InProgress
+            - Rejected
+            - Pending
+        currentWS:
+          type: string
+          examples: ["Dispute Investigation"]
+        transactionDisputes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransactionDisputes"
+
+    TransactionDisputes:
+      type: object
+      properties:
+        disputeType:
+          type: string
+          examples: ["Fraud Transaction"]
+        transactionId:
+          type: string
+          examples: ["TXN458793221"]
+
+    WIStatusErrorResponse:
+      type: object
+      properties:
+        errorCode:
+          type: integer
+          description: |
+            Technical Errors (1000–1999)
+
+            1000 - Unknown Technical Error
+            1001 - Database Connection Failure
+            1002 - Timeout Error
+            1003 - Service Unavailable
+            1004 - Invalid JSON Format
+            1005 - Internal Server Error
+
+            Business Errors (2000–2999)
+
+            2000 - Validation Failed
+            2001 - Invalid CIF ID
+            2002 - Invalid DBReferenceID
+            2003 - Invalid WI Number
+            2004 - WI Not Found
+            2005 - Multiple Parameters Provided
+            2006 - No Input Parameter Provided
+            2007 - Missing Mandatory Field
+          examples: [2004]
+        errorMessage:
+          type: string
+          examples: ["WI Not Found"]
+        errorType:
+          type: string
+          enum:
+            - Technical
+            - Business
+
+
+            Bopootstrap:
+
+            _format_version: '3.0'
+_info:
+  select_tags:
+    - kong-workspace-bootstrap
+consumers:
+  - username: anonymous
+    custom_id: anonymous-internal
+    tags:
+     - kong-workspace-bootstrap
+  - username: anonymous-deny
+    custom_id: anonymous-deny-internal
+    tags:
+     - kong-workspace-bootstrap
+  - username: rb-digital-banking-bff-ms
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: nbo-analytics-apis-acl-grp
+     - group: digital-asset-apis-acl-grp
+     - group: digital-equities-apis-acl-grp
+  - username: rb-ai-conversational-ms
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: ai-conversational-apis-acl-grp
+  - username: rb-crm-ms
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: nbo-analytics-apis-acl-grp
+  - username: rb-deh
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: efr-apis-acl-grp
+     - group: ibps-apis-acl-grp
+  - username: bbg-web-deh-api
+    tags:
+     - kong-workspace-bootstrap
+     - EFR
+     - consumer username same as sbo client_id created
+    acls:
+     - group: efr-apis-acl-grp
+  - username: rb-digital-banking
+    acls:
+     - group: customer-promo-apis-acl-grp
+  - username: rb-casmex
+    acls:
+     - group: customer-promo-apis-acl-grp
+  - username: rb-decision-tool-cram
+    acls:
+     - group: cram-apis-acl-grp
+  - username: rb-app-mgmt-github
+    acls:
+     - group: app-management-admin-apis-acl-grp
+  - username: cbd-unified-mcf-api
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: ibps-apis-acl-grp
+  - username: rb-deh-cpf
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: cpf-apis-acl-grp
+  - username: ms-web
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: payment-advice-acl-grp
+     - group: murabaha-ms-acl-grp
+  - username: cbd-app-dbunityph-api
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: payment-advice-acl-grp
+  - username: cbd-web-dbunityph-api
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: payment-advice-acl-grp
+  - username: pbg-web-dehunitypayhub-api
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: payment-advice-acl-grp
+  - username: rls-murabaha-ms
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: ms-murabaha-services-acl-grp
+  - username: tfm-sas-api
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: ibps-apis-acl-grp
+  - username: nbc-murabaha-ms
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: ms-murabaha-services-acl-grp   
+  - username: tfm-sas-transmarking-api
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: sas-ms-apis-acl-grp
+  - username: deh-murabaha-ms
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: ms-murabaha-services-acl-grp
+  - username: skiply-rb-decision-tool-cram
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: cram-apis-acl-grp
+  - username: sbi-system-api-acl-grp-consumer
+    tags:
+     - kong-workspace-bootstrap
+    acls:
+     - group: sbi-system-api-acl-grp
+
+services:
+_format_version: '3.0'
+_info:
+  select_tags:
+    - kong-workspace-bootstrap-service
+services:
+  - name: app-management-dev
+    protocol: https
+    host: app-management-dev.rakbanktst.ae
+    path: /
+    port: 443
+  - name: cors-service
+    protocol: http
+    host: mockbin.org
+    path: /
+    port: 80
+    routes:
+    - name: CORS_Route
+      https_redirect_status_code: 426
+      methods:
+      - OPTIONS
+      paths:
+      - ~/*
+      hosts:
+      - apigateway-dev.rakbanktst.ae
+      plugins:
+      - name: request-termination
+        #route: CORS_Route
+        enabled: true
+        config:
+          status_code: 200
+  - name: customer-dev_retail-users_rest
+    protocol: https
+    host: customer-dev.rakbanktst.ae
+    path: /retail-users/rest
+    port: 443
+  - name: db-common-dev_analytics-service
+    protocol: https
+    host: db-common-dev.rakbanktst.ae
+    path: /analytics-service
+    port: 443
+  - name: db-common-dev_efr-authentication
+    protocol: https
+    host: db-common-dev.rakbanktst.ae
+    path: /efr-authentication
+    port: 443
+  - name: db-common-dev_retail-payments_rest
+    protocol: https
+    host: db-common-dev.rakbanktst.ae
+    path: /retail-payments/rest
+    port: 443
+  - name: db-common-dev_retail-users
+    protocol: https
+    host: db-common-dev.rakbanktst.ae
+    path: /retail-users
+    port: 443
+  - name: digital-equity-dev
+    protocol: https
+    host: digital-equity-dev.rakbanktst.ae
+    path: /
+    port: 443
+  - name: digitalasset-dev
+    protocol: https
+    host: digitalasset-dev.rakbanktst.ae
+    path: /
+    port: 443
+  - name: retail-payments_payments-sit_svc_cluster_local_retail-payments_rest_v1
+    protocol: https
+    host: retail-payments.payments-sit.svc.cluster.local
+    path: /retail-payments/rest/v1
+    port: 9090
+  - name: cpf-dev
+    protocol: https
+    host: cpfdev.rakbanktst.ae
+    path: /
+    port: 443
+  - name: sbo-db-dev
+    protocol: https
+    host: sbo-db-dev.rakbanktst.ae
+    path: /
+    port: 443
+  - name: sbo-dev_security-broker
+    protocol: https
+    host: sbo-dev.rakbanktst.ae
+    path: /security-broker
+    port: 443
+  - name: proxy-ms-npssraktest
+    protocol: https
+    host: proxy-ms.npssraktest.rakbanktst.ae
+    path: /
+    port: 443
+  - name: proxy-ms-merchant-npssraktest
+    protocol: https
+    host: proxy-ms-merchant.npssraktest.rakbanktst.ae
+    path: /
+    port: 443
+  - name: payment-squad-ms
+    protocol: https
+    host: payments-dev.rakbanktst.ae
+    path: /
+    port: 443
+  - name: iccs-apis
+    protocol: https
+    host: ant4iccswebs02.rakbanktst.ae
+    path: /
+    port: 443
+  - name: db-bff-dev
+    protocol: https
+    host: db-bff-dev.rakbanktst.ae
+    path: /
+    port: 443
+  - name: rls-salam-integration-apis
+    protocol: https
+    host: nbc-dev.rakbanktst.ae
+    path: /murabaha-customer
+    port: 443
+  - name: salam-nbc-integration-apis
+    protocol: http
+    host: 192.168.38.110
+    path: /
+    port: 80
+  - name: vamrakdev-rakbanktst
+    protocol: https
+    host: vamrakdev.rakbanktst.ae
+    path: /
+    port: 443
+  - name: ibps-rakbank-apis
+    protocol: https
+    host: ANT2CASSVCS03.rakbanktst.ae
+    path: /IbpsCustomRestAPI/api/v1
+    port: 9443
+  - name: sbo_dev
+    protocol: https
+    host: sbo-dev.rakbanktst.ae
+    path: /
+    port: 443
+  - name: nbc-salam-integration-apis
+    protocol: https
+    host: nbc-dev.rakbanktst.ae
+    path: /murabaha-nbc
+    port: 443
+  - name: sas-card-txn-fraud-monitoring
+    protocol: https
+    host: cards-dev.rakbanktst.ae
+    path: /retail-cards-fraud-mgmt
+    port: 443
+  - name: embedded-finance-JO
+    protocol: https
+    host: embedded-dev.rakbanktst.ae
+    path: /partner
+    port: 443
+  - name: embedded-finance-DEH
+    protocol: https
+    host: embedded-dev.rakbanktst.ae
+    path: /
+    port: 443 
+  - name: mortgage-ibps-rakbank-apis
+    protocol: https
+    host: ANT2CASSVCS03.rakbanktst.ae
+    path: /OmniDocsRestWS_3/rest/services
+    port: 9443
+    
+
+
+     
+
+  
